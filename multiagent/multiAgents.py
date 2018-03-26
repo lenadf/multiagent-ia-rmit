@@ -22,77 +22,165 @@ def distToFood(gameState):
 
     pos = gameState.getPacmanPosition()
     food = gameState.getFood()
+
     dist = 0
+    score = 0
 
     for x in range(food.width):
         for y in range(food.height):
             if food[x][y] == True:
                 dist += util.manhattanDistance(pos, (x, y))
 
+    for x in range(2):
+        for y in range(2):
+            if food[x][y] == True:
+                scoreFood = 50
 
-    print "distToFood:",dist
-    return dist
+    return (dist, score)
 
+def getScoreFood(currentGameState, successorGameState):
 
-def isOnCollisionRoad(currentGameState, successorGameState):
+    newPos = successorGameState.getPacmanPosition()
+    scoreFood = 0
+    (x,y) = newPos
+    #(a,b) = distToFood(curengame)
+
+    food = currentGameState.getFood()
+
+    (oldDistToFood, oldCloseFood) = distToFood(currentGameState)
+    (newDistToFood, newCloseFood) = distToFood(successorGameState)
+
+    #print "old to food:",oldDistToFood
+    #print "new to food:",newDistToFood
+
+    if food[x][y]:
+        scoreFood += 15
+
+    if (x, y) in currentGameState.getCapsules():
+        scoreFood += 200
+
+    if oldDistToFood > newDistToFood:
+        scoreFood += 50
+    else:
+        scoreFood -= 50
+
+    scoreFood += newCloseFood
+
+    return scoreFood
+
+def isOnCollisionRoad(currentGameState, newDist, pos, newPos, ghost, scaredTimes):
 
     score = 0
 
-    pos = currentGameState.getPacmanPosition()
+    print "SA MERE"
+
+    #pos = currentGameState.getPacmanPosition()
     dir = currentGameState.getPacmanState().getDirection()
+    #ghostStates = currentGameState.getGhostStates()
+    #newPos = successorGameState.getPacmanPosition()
+
+    #for ghost in ghostStates:
+
+        #newDist = util.manhattanDistance(newPos, ghost.getPosition())
+    ghostDir = ghost.getDirection()
+    ghostPos = ghost.getPosition()
+
+    #print "new dist:",newDist
+
+    if (newDist <= 4):
+
+        for time in scaredTimes:
+
+            if time == 0:
+
+                if (dir == 'South') and ((ghostDir == 'East') or (ghostDir == 'West')):
+                    if pos[1] > ghostPos[1]:
+                        print "La merde"
+                        score -= 100
+                    #else:
+                        #score += 0
+
+                if (dir == 'North') and ((ghostDir == 'East') or (ghostDir == 'West')):
+                    if pos[1] < ghostPos[1]:
+                        print "La merde"
+                        score -= 100
+                    #else:
+                        #score += 50
+
+                if (dir == 'West') and ((ghostDir == 'North') or (ghostDir == 'South')):
+                    if pos[0] > ghostPos[0]:
+                        print "La merde"
+                        score -= 100
+                    #else:
+                        #score += 50
+
+                if (dir == 'East') and ((ghostDir == 'North') or (ghostDir == 'South')):
+                    if pos[0] < ghostPos[0]:
+                        print "La merde"
+                        score -= 100
+                    #else:
+                        #score += 50
+
+                if (((dir == 'West') and (ghostDir == 'East')) or ((dir == 'East') and (ghostDir == 'West'))) and (dir[0] == ghostDir[0]):
+                    score -= 200
+
+                #if (((dir == 'West') and (ghostDir == 'West')) or ((dir == 'East') and (ghostDir == 'East'))) and (dir[0] == ghostDir[0]):
+                #    score -= 50
+
+                if (((dir == 'North') and (ghostDir == 'South')) or ((dir == 'South') and (ghostDir == 'North'))) and (dir[1] == ghostDir[1]):
+                    score -= 200
+
+                #if (((dir == 'North') and (ghostDir == 'North')) or ((dir == 'South') and (ghostDir == 'South'))) and (dir[1] == ghostDir[1]):
+                #    score -= 50
+
+    return score
+
+def getScoreGhosts(currentGameState, successorGameState):
+
+    scoreGhost = 0
+
     ghostStates = currentGameState.getGhostStates()
+    newScaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+
+    pos = currentGameState.getPacmanPosition()
     newPos = successorGameState.getPacmanPosition()
 
     for ghost in ghostStates:
-
+        oldDist = util.manhattanDistance(pos, ghost.getPosition())
         newDist = util.manhattanDistance(newPos, ghost.getPosition())
-        ghostDir = ghost.getDirection()
-        ghostPos = ghost.getPosition()
 
-        if (newDist <= 5):
+        print "new distance:",newDist
 
-            if (dir == 'South') and ((ghostDir == 'East') or (ghostDir == 'West')):
-                if pos[1] > ghostPos[1]:
-                    print "La merde"
-                    score -= 25
+        for time in newScaredTimes:
+            if time > 3:
+                if newDist >= oldDist:
+                    #Going away from the ghosts
+                    scoreGhost -= 100
+                else:
+                    #Getting closer to the ghosts
+                    scoreGhost += 200
 
-            if (dir == 'North') and ((ghostDir == 'East') or (ghostDir == 'West')):
-                if pos[1] < ghostPos[1]:
-                    print "La merde"
-                    score -= 25
+        if newDist >= oldDist:
+            #Going away from the ghosts
+            scoreGhost += 50
+        else:
+            #Getting closer to the ghosts
+            scoreGhost -= 50
 
-            if (dir == 'West') and ((ghostDir == 'North') or (ghostdir == 'South')):
-                if pos[0] > ghostPos[0]:
-                    print "La merde"
-                    score -= 25
-
-            if (dir == 'East') and ((ghostDir == 'North') or (ghostDir == 'South')):
-                if pos[0] < ghostPos[0]:
-                    print "La merde"
-                    score -= 25
+        scoreGhost += isOnCollisionRoad(currentGameState, newDist, pos, newPos, ghost, newScaredTimes)
 
 
+    #dir = currentGameState.getPacmanState().getDirection()
 
+    #ghostStates = currentGameState.getGhostStates()
 
-
-
-
-def getScoreGhosts(currentGameState, successorGameState):
-    scoreGhost = 0
-
-    pos = currentGameState.getPacmanPosition()
-    dir = currentGameState.getPacmanState().getDirection()
-
-    ghostStates = currentGameState.getGhostStates()
-
-    newPos = successorGameState.getPacmanPosition()
-    newGhostStates = successorGameState.getGhostStates() #Tableau
-    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates] #Tableau
+    #newGhostStates = successorGameState.getGhostStates() #Tableau
+    #newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates] #Tableau
 
 
 
 
-
+    """
     for ghost in ghostStates:
 
         #ghost and newGhost are the same
@@ -110,20 +198,10 @@ def getScoreGhosts(currentGameState, successorGameState):
             if ((dir == 'North') and (ghostDir == 'South') or (dir == 'South') and (ghostDir == 'North')) and (dir[1] == ghostDir[1]):
                 scoreGhost -=100
 
-        """
-        if newDist >= oldDist:
-            #Going away from the ghosts
-            scoreGhost += 50
-        else:
-            #Getting closer to the ghosts
-            scoreGhost -= 50
-        """
-        #print oldDist
-        #print newDist
+    """
 
-    print "Score scoreGhosts:",scoreGhost
+    #print "Score scoreGhosts:",scoreGhost
     return scoreGhost
-
 
 class ReflexAgent(Agent):
     """
@@ -181,7 +259,9 @@ class ReflexAgent(Agent):
 
         "*** YOUR CODE HERE ***"
 
-        isOnCollisionRoad(currentGameState)
+        #isOnCollisionRoad(currentGameState, successorGameState)
+
+        foodList = newFood.asList()
 
         score = 0
 
@@ -192,16 +272,38 @@ class ReflexAgent(Agent):
         print "newGhostStates:",newGhostStates[0]
         print "newScaredTimes:",newScaredTimes
 
+        """
         (x, y) = newPos
+
         food = currentGameState.getFood()
 
+        oldDistToFood = distToFood(currentGameState)
+        newDistToFood = distToFood(successorGameState)
+
+        print "old to food:",oldDistToFood
+        print "new to food:",newDistToFood
+
         if food[x][y]:
-            score += 10
+            score += 15
 
         if (x, y) in currentGameState.getCapsules():
-            print "EHyyyyyyyyy"
-            score += 50
+            score += 200
 
+        if oldDistToFood > newDistToFood:
+            score += 50
+        else:
+            score -= 30
+
+        """
+
+        if newPos == (0,0):
+            print "A L'ARRET"
+            score -=100
+
+        score = score + getScoreGhosts(currentGameState, successorGameState) + getScoreFood(currentGameState, successorGameState)
+
+
+        """
         for ghost in newGhostStates:
             dir = currentGameState.getPacmanState().getDirection()
             #ghost and newGhost are the same
@@ -217,11 +319,11 @@ class ReflexAgent(Agent):
 
                 if ((dir == 'North') and (ghostDir == 'South') or (dir == 'South') and (ghostDir == 'North')) and (dir[1] == ghostDir[1]):
                     score -=100
-
+        """
 
         print "Score coucou:",score
 
-        return successorGameState.getScore()
+        return score #successorGameState.getScore()
 
 
 def scoreEvaluationFunction(currentGameState):
