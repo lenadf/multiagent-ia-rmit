@@ -114,101 +114,6 @@ def getDistClosestGhost(gameState):
     return (distClosestUnscaredGhost, distClosestScaredGhost)
 
 
-def getDistToFood(gameState):
-    pos = gameState.getPacmanPosition()
-    food = gameState.getFood()
-    dist = 0
-
-    for x in range(food.width):
-        for y in range(food.height):
-            if food[x][y] == True:
-                dist += util.manhattanDistance(pos, (x, y))
-
-    return dist
-
-
-def isOnCollisionRoad(currentGameState, successorGameState):
-    score = 0
-
-    pos = currentGameState.getPacmanPosition()
-    dir = currentGameState.getPacmanState().getDirection()
-    ghostStates = currentGameState.getGhostStates()
-    newPos = successorGameState.getPacmanPosition()
-
-    for ghost in ghostStates:
-
-        newDist = util.manhattanDistance(newPos, ghost.getPosition())
-        ghostDir = ghost.getDirection()
-        ghostPos = ghost.getPosition()
-
-        if (newDist <= 5):
-
-            if (dir == 'South') and ((ghostDir == 'East') or (ghostDir == 'West')):
-                if pos[1] > ghostPos[1]:
-                    print "La merde"
-                    score -= 25
-
-            if (dir == 'North') and ((ghostDir == 'East') or (ghostDir == 'West')):
-                if pos[1] < ghostPos[1]:
-                    print "La merde"
-                    score -= 25
-
-            if (dir == 'West') and ((ghostDir == 'North') or (ghostdir == 'South')):
-                if pos[0] > ghostPos[0]:
-                    print "La merde"
-                    score -= 25
-
-            if (dir == 'East') and ((ghostDir == 'North') or (ghostDir == 'South')):
-                if pos[0] < ghostPos[0]:
-                    print "La merde"
-                    score -= 25
-
-
-def getScoreGhosts(currentGameState, successorGameState):
-    scoreGhost = 0
-
-    pos = currentGameState.getPacmanPosition()
-    dir = currentGameState.getPacmanState().getDirection()
-
-    ghostStates = currentGameState.getGhostStates()
-
-    newPos = successorGameState.getPacmanPosition()
-    newGhostStates = successorGameState.getGhostStates() #Tableau
-    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates] #Tableau
-
-
-    for ghost in ghostStates:
-
-        #ghost and newGhost are the same
-        #oldDist = util.manhattanDistance(pos, ghost.getPosition())
-        newDist = util.manhattanDistance(newPos, ghost.getPosition())
-
-        ghostDir = ghost.getDirection()
-
-        if (newDist <= 5):
-
-            if ((dir == 'West') and (ghostDir == 'East') or (dir == 'East') and (ghostDir == 'West')) and (dir[0] == ghostDir[0]):
-                scoreGhost -= 100
-
-
-            if ((dir == 'North') and (ghostDir == 'South') or (dir == 'South') and (ghostDir == 'North')) and (dir[1] == ghostDir[1]):
-                scoreGhost -=100
-
-        """
-        if newDist >= oldDist:
-            #Going away from the ghosts
-            scoreGhost += 50
-        else:
-            #Getting closer to the ghosts
-            scoreGhost -= 50
-        """
-        #print oldDist
-        #print newDist
-
-    print "Score scoreGhosts:",scoreGhost
-    return scoreGhost
-
-
 class ReflexAgent(Agent):
     """
       A reflex agent chooses an action at each choice point by examining
@@ -280,7 +185,7 @@ class ReflexAgent(Agent):
         # betterEvaluationFunction is evaluationFunction with some features improved
         # So we prefer to call it directly to improve readability and code factorisation
         return genericEvaluationFunction(successorGameState, coefficients) - genericEvaluationFunction(currentGameState, coefficients)
-
+    
 
 def scoreEvaluationFunction(currentGameState):
     """
