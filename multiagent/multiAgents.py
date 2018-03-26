@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -18,6 +18,113 @@ import random, util
 
 from game import Agent
 
+def distToFood(gameState):
+
+    pos = gameState.getPacmanPosition()
+    food = gameState.getFood()
+    dist = 0
+
+    for x in range(food.width):
+        for y in range(food.height):
+            if food[x][y] == True:
+                dist += util.manhattanDistance(pos, (x, y))
+
+
+    print "distToFood:",dist
+    return dist
+
+
+def isOnCollisionRoad(currentGameState, successorGameState):
+
+    score = 0
+
+    pos = currentGameState.getPacmanPosition()
+    dir = currentGameState.getPacmanState().getDirection()
+    ghostStates = currentGameState.getGhostStates()
+    newPos = successorGameState.getPacmanPosition()
+
+    for ghost in ghostStates:
+
+        newDist = util.manhattanDistance(newPos, ghost.getPosition())
+        ghostDir = ghost.getDirection()
+        ghostPos = ghost.getPosition()
+
+        if (newDist <= 5):
+
+            if (dir == 'South') and ((ghostDir == 'East') or (ghostDir == 'West')):
+                if pos[1] > ghostPos[1]:
+                    print "La merde"
+                    score -= 25
+
+            if (dir == 'North') and ((ghostDir == 'East') or (ghostDir == 'West')):
+                if pos[1] < ghostPos[1]:
+                    print "La merde"
+                    score -= 25
+
+            if (dir == 'West') and ((ghostDir == 'North') or (ghostdir == 'South')):
+                if pos[0] > ghostPos[0]:
+                    print "La merde"
+                    score -= 25
+
+            if (dir == 'East') and ((ghostDir == 'North') or (ghostDir == 'South')):
+                if pos[0] < ghostPos[0]:
+                    print "La merde"
+                    score -= 25
+
+
+
+
+
+
+
+def getScoreGhosts(currentGameState, successorGameState):
+    scoreGhost = 0
+
+    pos = currentGameState.getPacmanPosition()
+    dir = currentGameState.getPacmanState().getDirection()
+
+    ghostStates = currentGameState.getGhostStates()
+
+    newPos = successorGameState.getPacmanPosition()
+    newGhostStates = successorGameState.getGhostStates() #Tableau
+    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates] #Tableau
+
+
+
+
+
+    for ghost in ghostStates:
+
+        #ghost and newGhost are the same
+        #oldDist = util.manhattanDistance(pos, ghost.getPosition())
+        newDist = util.manhattanDistance(newPos, ghost.getPosition())
+
+        ghostDir = ghost.getDirection()
+
+        if (newDist <= 5):
+
+            if ((dir == 'West') and (ghostDir == 'East') or (dir == 'East') and (ghostDir == 'West')) and (dir[0] == ghostDir[0]):
+                scoreGhost -= 100
+
+
+            if ((dir == 'North') and (ghostDir == 'South') or (dir == 'South') and (ghostDir == 'North')) and (dir[1] == ghostDir[1]):
+                scoreGhost -=100
+
+        """
+        if newDist >= oldDist:
+            #Going away from the ghosts
+            scoreGhost += 50
+        else:
+            #Getting closer to the ghosts
+            scoreGhost -= 50
+        """
+        #print oldDist
+        #print newDist
+
+    print "Score scoreGhosts:",scoreGhost
+    return scoreGhost
+
+
 class ReflexAgent(Agent):
     """
       A reflex agent chooses an action at each choice point by examining
@@ -27,7 +134,6 @@ class ReflexAgent(Agent):
       it in any way you see fit, so long as you don't touch our method
       headers.
     """
-
 
     def getAction(self, gameState):
         """
@@ -70,11 +176,53 @@ class ReflexAgent(Agent):
         successorGameState = currentGameState.generatePacmanSuccessor(action)
         newPos = successorGameState.getPacmanPosition()
         newFood = successorGameState.getFood()
-        newGhostStates = successorGameState.getGhostStates()
-        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+        newGhostStates = successorGameState.getGhostStates() #Tableau
+        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates] #Tableau
 
         "*** YOUR CODE HERE ***"
+
+        isOnCollisionRoad(currentGameState)
+
+        score = 0
+
+        print "currentGameState:",currentGameState
+        print "SuccessorGameState:", successorGameState
+        print "newPos:", newPos
+        print "newFood:",newFood
+        print "newGhostStates:",newGhostStates[0]
+        print "newScaredTimes:",newScaredTimes
+
+        (x, y) = newPos
+        food = currentGameState.getFood()
+
+        if food[x][y]:
+            score += 10
+
+        if (x, y) in currentGameState.getCapsules():
+            print "EHyyyyyyyyy"
+            score += 50
+
+        for ghost in newGhostStates:
+            dir = currentGameState.getPacmanState().getDirection()
+            #ghost and newGhost are the same
+            newDist = util.manhattanDistance(newPos, ghost.getPosition())
+
+            ghostDir = ghost.getDirection()
+
+            if (newDist <= 5):
+
+                if ((dir == 'West') and (ghostDir == 'East') or (dir == 'East') and (ghostDir == 'West')) and (dir[0] == ghostDir[0]):
+                    score -= 100
+
+
+                if ((dir == 'North') and (ghostDir == 'South') or (dir == 'South') and (ghostDir == 'North')) and (dir[1] == ghostDir[1]):
+                    score -=100
+
+
+        print "Score coucou:",score
+
         return successorGameState.getScore()
+
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -170,4 +318,3 @@ def betterEvaluationFunction(currentGameState):
 
 # Abbreviation
 better = betterEvaluationFunction
-
