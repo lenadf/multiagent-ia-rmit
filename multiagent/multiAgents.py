@@ -14,12 +14,107 @@
 
 from util import manhattanDistance
 from game import Directions
-import random, util
+import random, util, sys
 
 from game import Agent
 
-def distToFood(gameState):
+# To simulate infinity and negative infinity
+INF = sys.maxint
+NEGATIVE_INF = -sys.maxint - 1
 
+def minimumSpanningTree(gameState):
+    """
+    Return the minimum spanning tree
+    Vertex are the positions with food inside AND the current positions
+    Edges values are manhattanDistance between vertex
+    """
+    pos = gameState.getPacmanPosition()
+    food = gameState.getFood()
+
+
+    # Initialize Prim algorithm
+    pqueue = util.PriorityQueue()
+    G = set()
+    cost = {}
+    pred = {}
+
+    cost[pos] = 0
+    G.add(pos)
+
+    for x in range(food.width):
+        for y in range(food.height):
+            if (food[x][y]):
+                posFood = (x,y)
+                G.add(posFood)
+                cost[posFood] = INF # Infinity value
+                pred[posFood] = None
+
+    for v in G:
+        pqueue.push(v, cost[v])
+
+    # Main loop Prim
+    while (not pqueue.isEmpty()):
+        t = pqueue.pop()
+        for u in G:
+            w = util.manhattanDistance(u, t)
+            if (u != t) and (cost[u] > w):
+                pred[u] = t
+                cost[u] = w
+                pqueue.push(u, cost[u]) # Update the priority queue with the new value
+
+    return pred
+
+
+def getValueMST(pred, gameState):
+    totalWeight = 0
+
+    for u in pred:
+        totalWeight += util.manhattanDistance(u, pred[u])
+
+    return totalWeight
+
+
+def getDistClosestFood(gameState):
+    pos = gameState.getPacmanPosition()
+    food = gameState.getFood()
+    minDist = INF
+
+    for x in range(food.width):
+        for y in range(food.height):
+            if food[x][y] == True:
+                dist = util.manhattanDistance(pos, (x, y))
+
+                if dist < minDist:
+                    minDist = dist
+
+    return minDist
+
+
+def getDistClosestGhost(gameState):
+    pos = gameState.getPacmanPosition()
+    ghostStates = gameState.getGhostStates()
+
+    distClosestUnscaredGhost = INF
+    distClosestScaredGhost = NEGATIVE_INF
+
+    for ghost in ghostStates:
+        distToGhost = util.manhattanDistance(pos, ghost.getPosition())
+
+        if (ghost.scaredTimer > distToGhost) and (distToGhost < distClosestScaredGhost):
+            # We are in range, try to beat him !
+            distClosestScaredGhost = distToGhost
+        elif (distToGhost < distClosestUnscaredGhost):
+            # Runaway
+            distClosestUnscaredGhost = distToGhost
+
+    # Because we don't want to consider those parameters if they are not representative
+    distClosestUnscaredGhost = max(0, distClosestUnscaredGhost)
+    distClosestScaredGhost = max(0, distClosestScaredGhost)
+
+    return (distClosestUnscaredGhost, distClosestScaredGhost)
+
+
+def getDistToFood(gameState):
     pos = gameState.getPacmanPosition()
     food = gameState.getFood()
     dist = 0
@@ -29,13 +124,10 @@ def distToFood(gameState):
             if food[x][y] == True:
                 dist += util.manhattanDistance(pos, (x, y))
 
-
-    print "distToFood:",dist
     return dist
 
 
 def isOnCollisionRoad(currentGameState, successorGameState):
-
     score = 0
 
     pos = currentGameState.getPacmanPosition()
@@ -72,11 +164,6 @@ def isOnCollisionRoad(currentGameState, successorGameState):
                     score -= 25
 
 
-
-
-
-
-
 def getScoreGhosts(currentGameState, successorGameState):
     scoreGhost = 0
 
@@ -88,9 +175,6 @@ def getScoreGhosts(currentGameState, successorGameState):
     newPos = successorGameState.getPacmanPosition()
     newGhostStates = successorGameState.getGhostStates() #Tableau
     newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates] #Tableau
-
-
-
 
 
     for ghost in ghostStates:
@@ -180,48 +264,22 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates] #Tableau
 
         "*** YOUR CODE HERE ***"
+        # We don't want to get stuck
+        if (action == 'Stop'):
+            return NEGATIVE_INF
 
-        isOnCollisionRoad(currentGameState)
+        # To improve the coefficients we could have used some machine learning algorithms (genetic programming, svm, etc.)
+        coefficients = {}
+        coefficients['COEF_gameScore'] = 1
+        coefficients['COEF_distClosestFood'] = -2
+        coefficients['COEF_distClosestUnscaredGhost'] = 1.5
+        coefficients['COEF_distClosestScaredGhost'] = 2000
+        coefficients['COEF_foodLeft'] = -20
+        coefficients['COEF_capsulesLeft'] = -50
 
-        score = 0
-
-        print "currentGameState:",currentGameState
-        print "SuccessorGameState:", successorGameState
-        print "newPos:", newPos
-        print "newFood:",newFood
-        print "newGhostStates:",newGhostStates[0]
-        print "newScaredTimes:",newScaredTimes
-
-        (x, y) = newPos
-        food = currentGameState.getFood()
-
-        if food[x][y]:
-            score += 10
-
-        if (x, y) in currentGameState.getCapsules():
-            print "EHyyyyyyyyy"
-            score += 50
-
-        for ghost in newGhostStates:
-            dir = currentGameState.getPacmanState().getDirection()
-            #ghost and newGhost are the same
-            newDist = util.manhattanDistance(newPos, ghost.getPosition())
-
-            ghostDir = ghost.getDirection()
-
-            if (newDist <= 5):
-
-                if ((dir == 'West') and (ghostDir == 'East') or (dir == 'East') and (ghostDir == 'West')) and (dir[0] == ghostDir[0]):
-                    score -= 100
-
-
-                if ((dir == 'North') and (ghostDir == 'South') or (dir == 'South') and (ghostDir == 'North')) and (dir[1] == ghostDir[1]):
-                    score -=100
-
-
-        print "Score coucou:",score
-
-        return successorGameState.getScore()
+        # betterEvaluationFunction is evaluationFunction with some features improved
+        # So we prefer to call it directly to improve readability and code factorisation
+        return genericEvaluationFunction(successorGameState, coefficients) - genericEvaluationFunction(currentGameState, coefficients)
 
 
 def scoreEvaluationFunction(currentGameState):
@@ -233,6 +291,7 @@ def scoreEvaluationFunction(currentGameState):
       (not reflex agents).
     """
     return currentGameState.getScore()
+
 
 class MultiAgentSearchAgent(Agent):
     """
@@ -253,6 +312,7 @@ class MultiAgentSearchAgent(Agent):
         self.index = 0 # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
+
 
 class MinimaxAgent(MultiAgentSearchAgent):
     """
@@ -279,6 +339,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
+
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
       Your minimax agent with alpha-beta pruning (question 3)
@@ -290,6 +351,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -306,6 +368,44 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
+
+def genericEvaluationFunction(currentGameState, coefficients):
+    # The state corresponds to a terminal node
+    if currentGameState.isWin():
+        return INF             # utility(t) = +inf
+    if currentGameState.isLose():
+        return NEGATIVE_INF    # utility(t) = -inf
+
+    # The current game score
+    # Usefull to avoid Pacman "stopping" or doing useless move when the other params are close
+    gameScore = scoreEvaluationFunction(currentGameState)
+
+    # Distance to the closest food
+    # TODO : to improve the eval function, return the path to go there and check if there is no ghost on it
+    distClosestFood = getDistClosestFood(currentGameState)
+
+    # Distance to the closest unscared ghost and to the closest scared ghost
+    # Note that closest unscared ghost must be reachable (checking the timer of scare)
+    (distClosestUnscaredGhost, distClosestScaredGhost) = getDistClosestGhost(currentGameState)
+
+    if (distClosestScaredGhost != 0):
+        distClosestScaredGhost = 1.0/distClosestScaredGhost
+
+    # Basic info about the remaining food and capsules
+    foodLeft = currentGameState.getNumFood()
+    capsulesLeft = len(currentGameState.getCapsules())
+
+    # Linear combination of all those elements, COEF are found groping
+    score = coefficients['COEF_gameScore'] * gameScore + \
+            coefficients['COEF_distClosestFood'] * distClosestFood + \
+            coefficients['COEF_distClosestUnscaredGhost'] * distClosestUnscaredGhost + \
+            coefficients['COEF_distClosestScaredGhost'] * distClosestScaredGhost + \
+            coefficients['COEF_foodLeft'] * foodLeft + \
+            coefficients['COEF_capsulesLeft'] * capsulesLeft
+
+    return score
+
+
 def betterEvaluationFunction(currentGameState):
     """
       Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
@@ -314,7 +414,16 @@ def betterEvaluationFunction(currentGameState):
       DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # To improve the coefficients we could have used some machine learning algorithms (genetic programming, svm, etc.)
+    coefficients = {}
+    coefficients['COEF_gameScore'] = 1
+    coefficients['COEF_distClosestFood'] = -1.5
+    coefficients['COEF_distClosestUnscaredGhost'] = 2
+    coefficients['COEF_distClosestScaredGhost'] = 2000
+    coefficients['COEF_foodLeft'] = -5
+    coefficients['COEF_capsulesLeft'] = -10
+
+    return genericEvaluationFunction(gameState, coefficients)
 
 # Abbreviation
 better = betterEvaluationFunction
