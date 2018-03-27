@@ -185,7 +185,7 @@ class ReflexAgent(Agent):
         # betterEvaluationFunction is evaluationFunction with some features improved
         # So we prefer to call it directly to improve readability and code factorisation
         return genericEvaluationFunction(successorGameState, coefficients) - genericEvaluationFunction(currentGameState, coefficients)
-    
+
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -213,7 +213,7 @@ class MultiAgentSearchAgent(Agent):
       is another abstract class.
     """
 
-    def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '2'):
+    def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '2'): #scoreEvaluationFunction
         self.index = 0 # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
@@ -242,7 +242,38 @@ class MinimaxAgent(MultiAgentSearchAgent):
             Returns the total number of agents in the game
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        self.numGhosts = gameState.getNumAgents() - 1
+        legal = gameState.getLegalActions(0)
+        if Directions.STOP in legal: legal.remove(Directions.STOP)
+
+        maxScore = NEGATIVE_INF
+        maxAction = None
+
+        for action in legal:
+            successorGameState = gameState.generateSuccessor(0, action)
+            score = self.DFSMiniMax(successorGameState, 0, 1)
+
+            if score > maxScore:
+                maxScore = score
+                maxAction = action
+
+        return action
+
+
+    def DFSMiniMax(self, gameState, agentIndex, currentDepth):
+        if gameState.isWin() or gameState.isLose() or currentDepth > self.depth:
+            # gameState is a terminal state or has reached the maximum depth of minimax algo
+            return self.evaluationFunction(gameState)
+
+        legal = gameState.getLegalActions(agentIndex)
+        if Directions.STOP in legal: legal.remove(Directions.STOP)
+        successors = [(gameState.generateSuccessor(agentIndex, action), action) for action in legal]
+
+        if agentIndex == 0: # Pacman
+            return max([self.DFSMiniMax(successor[0], 1, currentDepth) for successor in successors])
+        else: # Ghost
+            return min([self.DFSMiniMax(successor[0], (agentIndex + 1) % (self.numGhosts + 1), (currentDepth + 1) if (agentIndex == self.numGhosts) else currentDepth) for successor in successors])
+
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
