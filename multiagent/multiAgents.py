@@ -286,7 +286,8 @@ class MinimaxAgent(MultiAgentSearchAgent):
         for action in legal:
             successor = gameState.generateSuccessor(agentIndex, action)
             nextDepth = (currentDepth + 1) if (agentIndex == self.numGhosts) else currentDepth
-            (score, oldAction) = self.DFSMiniMax(successor, (agentIndex + 1) % (self.numGhosts + 1), nextDepth)
+            nextAgent = (agentIndex + 1) % (self.numGhosts + 1)
+            (score, oldAction) = self.DFSMiniMax(successor, nextAgent, nextDepth)
 
             if score < minScore:
                 minScore = score
@@ -384,7 +385,68 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        self.numGhosts = gameState.getNumAgents() - 1
+        (maxScore, maxAction) = self.expectiMax(gameState, 0, 1)
+        return maxAction
+
+
+    def expectiMax(self, gameState, agentIndex, currentDepth):
+        if gameState.isWin() or gameState.isLose() or currentDepth > self.depth:
+            # gameState is a terminal state or has reached the maximum depth of minimax algo
+            return (self.evaluationFunction(gameState), None)
+
+        if agentIndex == 0: # Pacman
+            return self.getMaxSuccessor(gameState, agentIndex, currentDepth)
+        else: # Ghost
+            return self.getRandomSuccessor(gameState, agentIndex, currentDepth)
+
+
+    def getMaxSuccessor(self, gameState, agentIndex, currentDepth):
+        legal = gameState.getLegalActions(agentIndex)
+        if Directions.STOP in legal: legal.remove(Directions.STOP)
+
+        maxScore = NEGATIVE_INF
+        maxAction = None
+
+        for action in legal:
+            successor = gameState.generateSuccessor(agentIndex, action)
+            (score, oldAction) = self.expectiMax(successor, 1, currentDepth)
+
+            if score > maxScore:
+                maxScore = score
+                maxAction = action
+
+        return (maxScore, maxAction)
+
+
+    def getRandomSuccessor(self, gameState, agentIndex, currentDepth):
+        # Randomly uniform selection of an action
+        dist = self.getDistribution(agentIndex, gameState)
+        selectedAction = util.chooseFromDistribution(dist)
+
+        legal = gameState.getLegalActions(agentIndex)
+        if Directions.STOP in legal: legal.remove(Directions.STOP)
+
+        # NB : we browse this loop to expand all the gameState but it's not optimal
+        # In practise we can just expand call expectiMax on the action selected previously
+        for action in legal:
+            successor = gameState.generateSuccessor(agentIndex, action)
+            nextDepth = (currentDepth + 1) if (agentIndex == self.numGhosts) else currentDepth
+            nextAgent = (agentIndex + 1) % (self.numGhosts + 1)
+            (score, oldAction) = self.expectiMax(successor, nextAgent, nextDepth)
+
+            # Check if the action is the one who was randomly selected
+            if action == selectedAction:
+                selectedScore = score
+
+        return (selectedScore, selectedAction)
+
+
+    def getDistribution(self, agentIndex, gameState):
+        dist = util.Counter()
+        for a in gameState.getLegalActions(agentIndex): dist[a] = 1.0
+        dist.normalize()
+        return dist
 
 
 def genericEvaluationFunction(currentGameState, coefficients):
@@ -435,13 +497,13 @@ def betterEvaluationFunction(currentGameState):
     # To improve the coefficients we could have used some machine learning algorithms (genetic programming, svm, etc.)
     coefficients = {}
     coefficients['COEF_gameScore'] = 1
-    coefficients['COEF_distClosestFood'] = -1.5
-    coefficients['COEF_distClosestUnscaredGhost'] = 2
+    coefficients['COEF_distClosestFood'] = -2
+    coefficients['COEF_distClosestUnscaredGhost'] = 1.5
     coefficients['COEF_distClosestScaredGhost'] = 2000
-    coefficients['COEF_foodLeft'] = -5
-    coefficients['COEF_capsulesLeft'] = -10
+    coefficients['COEF_foodLeft'] = -20
+    coefficients['COEF_capsulesLeft'] = -30
 
-    return genericEvaluationFunction(gameState, coefficients)
+    return genericEvaluationFunction(currentGameState, coefficients)
 
 # Abbreviation
 better = betterEvaluationFunction
