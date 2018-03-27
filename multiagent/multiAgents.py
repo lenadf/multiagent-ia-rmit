@@ -305,7 +305,70 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        self.numGhosts = gameState.getNumAgents() - 1
+        (maxScore, maxAction) = self.alphaBetaPruning(gameState, 0, 1, NEGATIVE_INF, INF)
+        return maxAction
+
+
+    def alphaBetaPruning(self, gameState, agentIndex, currentDepth, alpha, beta):
+        if gameState.isWin() or gameState.isLose() or currentDepth > self.depth:
+            # gameState is a terminal state or has reached the maximum depth of minimax algo
+            return (self.evaluationFunction(gameState), None)
+
+        if agentIndex == 0: # Pacman
+            return self.getMaxSuccessor(gameState, agentIndex, currentDepth, alpha, beta)
+        else: # Ghost
+            return self.getMinSuccessor(gameState, agentIndex, currentDepth, alpha, beta)
+
+
+    def getMaxSuccessor(self, gameState, agentIndex, currentDepth, alpha, beta):
+        legal = gameState.getLegalActions(agentIndex)
+        if Directions.STOP in legal: legal.remove(Directions.STOP)
+
+        maxScore = NEGATIVE_INF
+        maxAction = None
+
+        for action in legal:
+            successor = gameState.generateSuccessor(agentIndex, action)
+            (score, oldAction) = self.alphaBetaPruning(successor, 1, currentDepth, alpha, beta)
+
+            # Beta cut
+            if score > beta:
+                return (score, action)
+
+            # Update maxScore and alpha
+            if score > maxScore:
+                maxScore = score
+                maxAction = action
+                alpha = max(alpha, score)
+
+        return (maxScore, maxAction)
+
+
+    def getMinSuccessor(self, gameState, agentIndex, currentDepth, alpha, beta):
+        legal = gameState.getLegalActions(agentIndex)
+        if Directions.STOP in legal: legal.remove(Directions.STOP)
+
+        minScore = INF
+        minAction = None
+
+        for action in legal:
+            successor = gameState.generateSuccessor(agentIndex, action)
+            nextDepth = (currentDepth + 1) if (agentIndex == self.numGhosts) else currentDepth
+            nextAgent = (agentIndex + 1) % (self.numGhosts + 1)
+            (score, oldAction) = self.alphaBetaPruning(successor, nextAgent, nextDepth, alpha, beta)
+
+            # Alpha cut
+            if score < alpha:
+                return (score, action)
+
+            # Update minScore and beta
+            if score < minScore:
+                minScore = score
+                minAction = action
+                beta = min(beta, score)
+
+        return (minScore, minAction)
 
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
