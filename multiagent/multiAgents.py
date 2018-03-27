@@ -243,37 +243,56 @@ class MinimaxAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
         self.numGhosts = gameState.getNumAgents() - 1
-        legal = gameState.getLegalActions(0)
+        (maxScore, maxAction) = self.DFSMiniMax(gameState, 0, 1)
+        return maxAction
+
+
+    def DFSMiniMax(self, gameState, agentIndex, currentDepth):
+        if gameState.isWin() or gameState.isLose() or currentDepth > self.depth:
+            # gameState is a terminal state or has reached the maximum depth of minimax algo
+            return (self.evaluationFunction(gameState), None)
+
+        if agentIndex == 0: # Pacman
+            return self.getMaxSuccessor(gameState, agentIndex, currentDepth)
+        else: # Ghost
+            return self.getMinSuccessor(gameState, agentIndex, currentDepth)
+
+
+    def getMaxSuccessor(self, gameState, agentIndex, currentDepth):
+        legal = gameState.getLegalActions(agentIndex)
         if Directions.STOP in legal: legal.remove(Directions.STOP)
 
         maxScore = NEGATIVE_INF
         maxAction = None
 
         for action in legal:
-            successorGameState = gameState.generateSuccessor(0, action)
-            score = self.DFSMiniMax(successorGameState, 0, 1)
+            successor = gameState.generateSuccessor(agentIndex, action)
+            (score, oldAction) = self.DFSMiniMax(successor, 1, currentDepth)
 
             if score > maxScore:
                 maxScore = score
                 maxAction = action
 
-        return action
+        return (maxScore, maxAction)
 
 
-    def DFSMiniMax(self, gameState, agentIndex, currentDepth):
-        if gameState.isWin() or gameState.isLose() or currentDepth > self.depth:
-            # gameState is a terminal state or has reached the maximum depth of minimax algo
-            return self.evaluationFunction(gameState)
-
+    def getMinSuccessor(self, gameState, agentIndex, currentDepth):
         legal = gameState.getLegalActions(agentIndex)
         if Directions.STOP in legal: legal.remove(Directions.STOP)
-        successors = [(gameState.generateSuccessor(agentIndex, action), action) for action in legal]
 
-        if agentIndex == 0: # Pacman
-            return max([self.DFSMiniMax(successor[0], 1, currentDepth) for successor in successors])
-        else: # Ghost
-            return min([self.DFSMiniMax(successor[0], (agentIndex + 1) % (self.numGhosts + 1), (currentDepth + 1) if (agentIndex == self.numGhosts) else currentDepth) for successor in successors])
+        minScore = INF
+        minAction = None
 
+        for action in legal:
+            successor = gameState.generateSuccessor(agentIndex, action)
+            nextDepth = (currentDepth + 1) if (agentIndex == self.numGhosts) else currentDepth
+            (score, oldAction) = self.DFSMiniMax(successor, (agentIndex + 1) % (self.numGhosts + 1), nextDepth)
+
+            if score < minScore:
+                minScore = score
+                minAction = action
+
+        return (minScore, minAction)
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
